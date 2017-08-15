@@ -37,7 +37,7 @@ network_model_path = args.network_model[0]
 K.set_learning_phase(0)
 
 # Specify the data. This currently defaults to models including the hand_tailored side channel
-dataset_model = aia.AIA(side_channels=side_channels, aia_image_count=aia_image_count, dependent_variable="flux delta")
+dataset_model = aia.AIA(side_channels=side_channels, aia_image_count=aia_image_count, dependent_variable="forecast")
 network_model = dataset_model.get_network_model(network_model_path)
 
 # Compile the function that generates the gradients for input images based on the network
@@ -82,11 +82,12 @@ def write_images(grads_value, image_index):
             for idx2 in range(0, 1024):
                 layer[idx][idx2] = 255.0 * (layer[idx][idx2] - least)/(most - least)
 
-        imsave('gradient_image' + str(image_index) + "_layer_" + str(layer_idx) + '.png', layer)
+        imsave(network_model_path[:-27]+'maps/gradient_image' + str(image_index) + "_layer_" + str(layer_idx) + '.png', layer)
 
 
 # Get the validation data we are testing this script on, then select the first records
-dataset = dataset_model.get_validation_data()
+files = ['juflr_AIA20140610_1048_8chnls_1024_060m.fthr']
+dataset = dataset_model.get_validation_data(files=files)
 x_inputs = dataset[0]
 
 # Add the first image to the inputs

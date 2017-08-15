@@ -154,7 +154,7 @@ with open("config.yml", "r") as config_file:
 # Uncomment only the side channel you want to include.
 side_channels = []
 #side_channels = ["current_goes"]
-#side_channels = ["hand_tailored"]
+side_channels = ["hand_tailored"]
 #side_channels = ["true_value"]
 
 dataset_model = aia.AIA(config["samples_per_step"], side_channels=side_channels, aia_image_count=aia_image_count, dependent_variable="forecast")
@@ -196,8 +196,10 @@ if len(input_images) > 1:
     x = concatenate(input_images)
 else:
     x = input_images[0]
-x = Conv2D(1, (1,1), strides=(1,1), padding='same', activation="relu")(x)
-x = MaxPooling2D(pool_size=(1024, 1024), strides=(1,1), padding='valid')(x)
+x = Conv2D(50, (10,10), strides=(2,2), padding='same', use_bias = False, activation="relu")(x)
+x = MaxPooling2D(pool_size=(10, 10), strides=(2,2), padding='same')(x)
+x = Conv2D(20, (10,10), strides=(2,2), padding='same', use_bias = False, activation="relu")(x)
+x = MaxPooling2D(pool_size=(40, 40), strides=(20,20), padding='same')(x)
 x = Flatten()(x)
 x = Dropout(.5)(x)
 
@@ -205,14 +207,14 @@ x = Dropout(.5)(x)
 if side_channel_length > 0:
     x = concatenate([x, input_side_channel])
 
-x = Dense(2, activation="relu")(x)
+#x = Dense(2, activation="relu")(x)
 #x = Dense(128, activation="relu")(x)
-#x = Dense(32, activation="relu")(x)
+x = Dense(50, activation="linear")(x)
 #x = Dense(32, activation="relu")(x)
 prediction = Dense(1, activation="linear")(x)
 
 forecaster = Model(inputs=all_inputs, outputs=prediction)
-adam = adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0, clipnorm=1.0)
+adam = adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.00001, clipnorm=1.0)
 forecaster.compile(optimizer=adam, loss="mean_squared_error")
 
 # Print the netwrok summary information
@@ -255,6 +257,13 @@ history = forecaster.fit_generator(dataset_model.training_generator(),
                                    callbacks=[tensorboard_callbacks, training_callbacks, model_checkpoint],
                                    workers=1,
 )
+#history = forecaster.fit_generator(dataset_model.training_generator(),
+#                                   steps_per_epoch,
+#                                   epochs=epochs,
+#                                   #validation_data=dataset_model.get_validation_data(),
+#                                   callbacks=[tensorboard_callbacks, training_callbacks, model_checkpoint],
+#                                   workers=1,
+#)
 
 # Loss on the training set
 print "printing loss history"

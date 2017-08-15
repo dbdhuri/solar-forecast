@@ -139,6 +139,31 @@ for delay in delays:
                 y_row += [f]  #File name
                 Y_vals.append(y_row)              
         
+        #Processing extra validation files
+        jun_flare_files = glob.glob('../../../validation_june14/juflr_AIA*060m.fthr')
+        print 'jun_flare_files..',len(jun_flare_files)
+        for f in jun_flare_files:
+            inxSlash =  [m.start() for m in re.finditer('/', f)]
+            inxSlash = inxSlash[len(inxSlash)-1]
+            f = f[inxSlash+1:]           
+            date_s = f[9:22]
+
+            #Current Xray flux
+            date = datetime.datetime.strptime(date_s,'%Y%m%d_%H%M')
+            Y_indexC = get_Y_index(date)
+
+            #Future Xray flux after delay
+            date += datetime.timedelta(seconds=60*delay)
+            Y_indexF = get_Y_index(date)
+
+            #Store values
+            if Y_indexF < len(Y_data):
+                y_row = [date_s]
+                y_row += [get_yval(Y_indexF, False)]  #Future Xray Flux
+                y_row += [get_yval(Y_indexC, True)]  #Current Xray Flux
+                y_row += [y_row[1]-y_row[2]]  #Delta
+                y_row += [f]  #File name
+                Y_vals.append(y_row)              
         if delay >= 60:
             this_delay = '%02dhr'%(delay/60)
         else:
@@ -149,5 +174,5 @@ for delay in delays:
             this_dur = '%02dmin'%(catch)
         
         print len(Y_vals)
-        writer = csv.writer(file(filePath + 'y/All_Ys_%sDelay_%sMax.csv'%(this_delay,this_dur),'w'))
+        writer = csv.writer(file('../../../y/All_Ys_%sDelay_%sMax.csv'%(this_delay,this_dur),'w'))
         writer.writerows(Y_vals)

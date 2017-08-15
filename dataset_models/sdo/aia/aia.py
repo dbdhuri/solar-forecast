@@ -15,7 +15,7 @@ class AIA(dataset_models.dataset.Dataset):
 
     def __init__(self,
                  samples_per_step=32,
-                 dependent_variable="flux delta",
+                 dependent_variable="forecast",
                  lag="01hr",
                  catch="24hr",
                  aia_image_count=2,
@@ -92,7 +92,7 @@ class AIA(dataset_models.dataset.Dataset):
         """
         return len(self.validation_files)
 
-    def get_validation_data(self):
+    def get_validation_data(self, files = None):
         """
         Load samples for validation dataset. This will load the entire validation dataset
         into memory. If you have a very large validation dataset you should likely
@@ -100,7 +100,9 @@ class AIA(dataset_models.dataset.Dataset):
         """
         data_y = []
         data_x = []
-        for f in self.validation_files:
+        if not files:
+            files = self.validation_files
+        for f in files:
             sample = self._get_x_data(f, aia_image_count=self.aia_image_count, training=False)
             self._sample_append(data_x, sample)
             data_y.append(self._get_y(f))
@@ -369,7 +371,7 @@ class AIA(dataset_models.dataset.Dataset):
         length = len(filename)
         assert(length == 44)
         k = filename[9:22]
-        future = self.y_dict[k]
+        future = np.log10(self.y_dict[k])
         return future
 
     def _get_y(self, filename):

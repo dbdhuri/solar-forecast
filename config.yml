@@ -2,8 +2,8 @@
 aia_path: /data/sw/version4/
 
 # Network Learning Parameters
-steps_per_epoch: 100
+steps_per_epoch: 150
 samples_per_step: 30
-epochs: 100
+epochs: 25
 optimizer: adam
 loss: mean_squared_error
