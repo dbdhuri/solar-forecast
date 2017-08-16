@@ -196,10 +196,12 @@ if len(input_images) > 1:
     x = concatenate(input_images)
 else:
     x = input_images[0]
-x = Conv2D(50, (10,10), strides=(2,2), padding='same', use_bias = False, activation="relu")(x)
-x = MaxPooling2D(pool_size=(10, 10), strides=(2,2), padding='same')(x)
-x = Conv2D(20, (10,10), strides=(2,2), padding='same', use_bias = False, activation="relu")(x)
-x = MaxPooling2D(pool_size=(40, 40), strides=(20,20), padding='same')(x)
+x = MaxPooling2D(pool_size=(50, 50), strides=(2,2), padding='same')(x)
+x = Conv2D(32, (4,4), strides=(1,1), padding='same', use_bias = False, activation="relu")(x)
+x = MaxPooling2D(pool_size=(10,10), strides=(2,2), padding='same')(x)
+x = Conv2D(16, (10,10), strides=(1,1), padding='same', use_bias = False, activation="relu")(x)
+x = MaxPooling2D(pool_size=(5,5), strides=(2,2), padding='same')(x)
+x = Conv2D(8, (20,20), strides=(1,1), padding='same', use_bias = False, activation="relu")(x)
 x = Flatten()(x)
 x = Dropout(.5)(x)
 
@@ -209,9 +211,11 @@ if side_channel_length > 0:
 
 #x = Dense(2, activation="relu")(x)
 #x = Dense(128, activation="relu")(x)
-x = Dense(50, activation="linear")(x)
-#x = Dense(32, activation="relu")(x)
-prediction = Dense(1, activation="linear")(x)
+x = Dense(128, activation="relu")(x)
+x = Dropout(.5)(x)
+x = Dense(64, activation="relu")(x)
+x = Dropout(.5)(x)
+prediction = Dense(1, activation="relu")(x)
 
 forecaster = Model(inputs=all_inputs, outputs=prediction)
 adam = adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.00001, clipnorm=1.0)
