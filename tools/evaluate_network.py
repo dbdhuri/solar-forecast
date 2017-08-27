@@ -13,7 +13,7 @@ parser.add_argument('network_model', metavar='N', type=str, nargs=1,
 args = parser.parse_args()
 
 # Specify the data
-dataset_model = aia.AIA(side_channels=[], aia_image_count=1)
+dataset_model = aia.AIA(side_channels=['hand_tailored'], aia_image_count=1)
 
 # Load and evaluate the network
 dataset_model.evaluate_network(args.network_model[0])

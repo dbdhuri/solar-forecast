@@ -154,7 +154,7 @@ with open("config.yml", "r") as config_file:
 # Uncomment only the side channel you want to include.
 side_channels = []
 #side_channels = ["current_goes"]
-side_channels = ["hand_tailored"]
+#side_channels = ["hand_tailored"]
 #side_channels = ["true_value"]
 
 dataset_model = aia.AIA(config["samples_per_step"], side_channels=side_channels, aia_image_count=aia_image_count, dependent_variable="forecast")
@@ -197,11 +197,11 @@ if len(input_images) > 1:
 else:
     x = input_images[0]
 x = MaxPooling2D(pool_size=(50, 50), strides=(2,2), padding='same')(x)
-x = Conv2D(32, (4,4), strides=(1,1), padding='same', use_bias = False, activation="relu")(x)
+x = Conv2D(32, (4,4), strides=(1,1), padding='same', use_bias = False, activation="sigmoid")(x)
 x = MaxPooling2D(pool_size=(10,10), strides=(2,2), padding='same')(x)
 x = Conv2D(16, (10,10), strides=(1,1), padding='same', use_bias = False, activation="relu")(x)
 x = MaxPooling2D(pool_size=(5,5), strides=(2,2), padding='same')(x)
-x = Conv2D(8, (20,20), strides=(1,1), padding='same', use_bias = False, activation="relu")(x)
+x = Conv2D(8, (20,20), strides=(1,1), padding='same', use_bias = False, activation="linear")(x)
 x = Flatten()(x)
 x = Dropout(.5)(x)
 
@@ -211,11 +211,11 @@ if side_channel_length > 0:
 
 #x = Dense(2, activation="relu")(x)
 #x = Dense(128, activation="relu")(x)
-x = Dense(128, activation="relu")(x)
+x = Dense(128, activation="linear")(x)
 x = Dropout(.5)(x)
-x = Dense(64, activation="relu")(x)
+x = Dense(64, activation="linear")(x)
 x = Dropout(.5)(x)
-prediction = Dense(1, activation="relu")(x)
+prediction = Dense(1, activation="linear")(x)
 
 forecaster = Model(inputs=all_inputs, outputs=prediction)
 adam = adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.00001, clipnorm=1.0)

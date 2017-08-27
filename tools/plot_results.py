@@ -68,15 +68,16 @@ for i in range(0,len(noaa_preds)):
 
 y_min_true = min(y_val_true)
 y_min_pred = min(y_val_pred)
-y_min = min([y_min_true, y_min_pred])
-y_min = 0.9*y_min*1.0e-06
+y_min = min([y_min_true, y_min_pred]) - 0.1
+#y_min = 0.9*y_min*1.0e-06
+y_min = np.power(10.0,y_min)
 #Plotting using matplotlib
 y_val_true = np.array(y_val_true, dtype=float)
 y_val_pred = np.array(y_val_pred, dtype=float)
 pl.title('24hr Maximum X-ray Flux Forecast Every 36 Minutes')
 pl.ylabel('24hr Max X-ray Flux (Watts m$^{-2}$)')
-pl.semilogy(y_val_true*1.0e-06, color = 'blue',label = 'True', lw = 1.5)
-pl.semilogy(y_val_pred*1.0e-06, color = 'red', label = 'Predicted', lw = 1.5)
+pl.semilogy(np.power(10.0,y_val_true), color = 'blue',label = 'True', lw = 1.5)
+pl.semilogy(np.power(10.0,y_val_pred), color = 'red', label = 'Predicted', lw = 1.5)
 pl.semilogy(y_noaa_pred, color = 'green', label = 'NOAA', lw = 1.5)
 pl.xticks(day_indices[:-1])
 pl.tick_params(

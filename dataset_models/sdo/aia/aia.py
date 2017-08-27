@@ -371,7 +371,7 @@ class AIA(dataset_models.dataset.Dataset):
         length = len(filename)
         assert(length == 44)
         k = filename[9:22]
-        future = self.y_dict[k]*1000000.0
+        future = np.log10(self.y_dict[k])
         return future
 
     def _get_y(self, filename):
