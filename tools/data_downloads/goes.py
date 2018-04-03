@@ -49,7 +49,7 @@ for i in range(0,len(Eras)):
                         data.append([thisdate, Quality_Flag, B_count, B_Flux])
         date += datetime.timedelta(hours=24)       
 
-writer = csv.writer(open('Flux_data_try.csv','w'))
+writer = csv.writer(open('../../data/Flux_data_Source.csv','w'))
 writer.writerows(data)
 
 print 'done..'
