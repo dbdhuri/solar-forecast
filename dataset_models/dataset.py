@@ -1,4 +1,5 @@
 import yaml
+import os.path
 
 class Dataset(object):
     """
@@ -7,9 +8,10 @@ class Dataset(object):
 
     def __init__(self, samples_per_step=32):
 
-        # Load the configuration file indicating where the files are stored,
-        # then load the names of the data files
-        with open("config.yml", "r") as config_file:
+        # Open the root config file
+        abspath = os.path.abspath(__file__)
+        head, tail = os.path.split(abspath)
+        with open(head + "/../config.yml", "r") as config_file:
             self.config = yaml.load(config_file)
 
         self.samples_per_step = samples_per_step  # Batch size
@@ -35,12 +37,36 @@ class Dataset(object):
         """
         raise NotImplementedError
 
-    def training_generator(self):
+    def get_validation_generator(self):
+        """
+        Iterate through the entire validation dataset, then loop back to the first validation
+        sample. You should randomize the order of the validation set within the initialization
+        of the dataset_model.
+        """
+        raise NotImplementedError
+
+    def get_training_generator(self):
         """
         Generate samples for training by selecting a random subsample of
         files located in the training directory. The training data will
         then be collected with the additional timesteps of images
         and side channel information.
+        """
+        raise NotImplementedError
+
+    def get_training_generator_multiprocess(self):
+        """
+        Return data for training in a threadsafe manner. To
+        instantiate this method you should generally
+        utilize the Keras Sequence class.
+        """
+        raise NotImplementedError
+
+    def get_validation_generator_multiprocess(self):
+        """
+        Return data for validation in a threadsafe manner. To
+        instantiate this method you should generally
+        utilize the Keras Sequence class.
         """
         raise NotImplementedError
 

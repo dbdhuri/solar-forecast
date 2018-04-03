@@ -4,8 +4,11 @@ from datetime import timedelta, datetime
 import random
 import math
 import dataset_models.dataset
-from operator import div, sub
+from dataset_models.sequencer import GeneratorSequence
+from operator import truediv as div
+from operator import sub
 import feather
+import scipy.ndimage as sp
 
 class AIA(dataset_models.dataset.Dataset):
     """
@@ -70,12 +73,13 @@ class AIA(dataset_models.dataset.Dataset):
         # Load the y variables into memory
         self.y_dict = {}
         self.y_prior_dict = {}
-        with open(self.y_filepath, "rb") as f:
+        with open(self.y_filepath, "r") as f:
             f.readline()
             for line in f:
                 split_y = line.split(",")
-                cur_y = float(split_y[1])
-                self.y_dict[split_y[0]] = cur_y
+                #cur_y = float(split_y[1])
+                cur_y = float(split_y[3])
+                self.y_dict[split_y[0]] = cur_y*1e6
                 self.y_prior_dict[split_y[0]] = float(split_y[2])
         self._clean_data()
 
@@ -92,23 +96,22 @@ class AIA(dataset_models.dataset.Dataset):
         """
         return len(self.validation_files)
 
-    def get_validation_data(self, files = None):
+    def get_validation_generator(self):
         """
         Load samples for validation dataset. This will load the entire validation dataset
         into memory. If you have a very large validation dataset you should likely
         refactor this to be a data generator that will stage the data into memory incrementally.
         """
-        data_y = []
-        data_x = []
-        if not files:
-            files = self.validation_files
-        for f in files:
-            sample = self._get_x_data(f, aia_image_count=self.aia_image_count, training=False)
-            self._sample_append(data_x, sample)
-            data_y.append(self._get_y(f))
-        return self._finalize_dataset(data_x, data_y)
+        while True:
+            data_y = []
+            data_x = []
+            for f in self.validation_files:
+                sample = self._get_x_data(f, training=False)
+                self._sample_append(data_x, sample)
+                data_y.append(self._get_y(f))
+            yield self._finalize_dataset(data_x, data_y)
 
-    def training_generator(self):
+    def get_training_generator(self):
         """
         Generate samples for training by selecting a random subsample of
         files located in the training directory. The training data will
@@ -123,7 +126,7 @@ class AIA(dataset_models.dataset.Dataset):
         while 1:
             f = files[i]
             i += 1
-            sample = self._get_x_data(f, aia_image_count=self.aia_image_count, training=True)
+            sample = self._get_x_data(f, training=True)
             self._sample_append(data_x, sample)
             data_y.append(self._get_y(f))
 
@@ -136,12 +139,24 @@ class AIA(dataset_models.dataset.Dataset):
                 data_x = []
                 data_y = []
 
+    def get_training_generator_multiprocess(self):
+        """
+        Generate sets of training data in a threadsafe manner.
+        """
+        return GeneratorSequence(
+            dataset_model_class=AIA,
+            batch_size=self.samples_per_step,
+            dataset_model_params={"side_channels": self.side_channels,
+                "aia_image_count": self.aia_image_count,
+                "dependent_variable": self.dependent_variable
+            })
+
     def get_network_model(self, network_model_path):
         """Load a network model from file.
         @param network_model_path {string} The file path to the network model.
         """
         from keras.models import load_model
-        from dataset_models.sdo.aia.layers import LogWhiten
+        from dataset_models.sdo.layers import LogWhiten
         custom_objects = {"LogWhiten": LogWhiten}
         model = load_model(network_model_path,
                            custom_objects=custom_objects)
@@ -154,7 +169,7 @@ class AIA(dataset_models.dataset.Dataset):
         model = self.get_network_model(network_model_path)
         for layer in model.layers:
             weights = layer.get_weights() # list of numpy arrays
-            print weights
+            print(weights)
 
     def evaluate_network(self, network_model_path):
         """
@@ -172,7 +187,7 @@ class AIA(dataset_models.dataset.Dataset):
             for filename in file_names:
                 data_x = []
                 data_y = []
-                sample = self._get_x_data(filename, aia_image_count=self.aia_image_count, training=training)
+                sample = self._get_x_data(filename, training=training)
                 self._sample_append(data_x, sample)
                 data_y.append(-999999999999.0)
                 prediction = model.predict(self._finalize_dataset(data_x, data_y)[0], verbose=0)
@@ -188,11 +203,11 @@ class AIA(dataset_models.dataset.Dataset):
 
         save_performance(self.train_files[0::100], network_model_path + ".training.performance", training=True)
         save_performance(self.validation_files, network_model_path + ".validation.performance", training=False)
-        print "#########"
-        print "performance data has been saved to the following locations"
-        print network_model_path + ".training.performance"
-        print network_model_path + ".validation.performance"
-        print "#########"
+        print("#########")
+        print("performance data has been saved to the following locations")
+        print(network_model_path + ".training.performance")
+        print(network_model_path + ".validation.performance")
+        print("#########")
 
     def download_dataset(self):
         """
@@ -333,6 +348,7 @@ class AIA(dataset_models.dataset.Dataset):
         """
         for index in range(0, self.aia_image_count):
             data_x[index] = np.reshape(data_x[index], (len(data_x[index]), self.input_width, self.input_height, self.input_channels)).astype('float32')
+
         assert len(self.side_channels) < 2, "You need to fix this for arbitrary side channel selection"
         if "current_goes" in self.side_channels:
             data_x[-1] = np.reshape(data_x[-1], (len(data_x[-1]), 1)).astype('float32')
@@ -403,9 +419,9 @@ class AIA(dataset_models.dataset.Dataset):
         """
         identifier = self._get_prior_timestep_string(filename, timestep)
         if filename[:5] == "noflr":
-            suffix = "_8chnls_1024_0" + str(12 * timestep) + "m.fthr"
+            suffix = "_8chnls_1024_0" + str(12 * timestep) + "h.fthr"
         else:
-            suffix = "_8chnls_1024_0" + str(60 + 12 * timestep) + "m.fthr"
+            suffix = "_8chnls_1024_0" + str(12 + 12 * timestep) + "h.fthr"
         return filename[0:9] + identifier + suffix
 
     def _get_prior_y(self, filename):
@@ -440,10 +456,11 @@ class AIA(dataset_models.dataset.Dataset):
                     return False
                 return True
             return filter_files
-        self.train_files = filter(filter_closure(True), self.train_files)
-        self.validation_files = filter(filter_closure(False), self.validation_files)
-        print "Training " + str(starting_training_count) + "-> " + str(len(self.train_files))
-        print "Validation " + str(starting_validation_count) + "-> " + str(len(self.validation_files))
+        self.train_files = list(filter(filter_closure(True), self.train_files))
+        self.validation_files = list(filter(filter_closure(False), self.validation_files))
+
+        print("Training " + str(starting_training_count) + "-> " + str(len(self.train_files)))
+        print("Validation " + str(starting_validation_count) + "-> " + str(len(self.validation_files)))
 
     def _get_aia_image(self, filename, directory, previous=0):
         """
@@ -461,12 +478,12 @@ class AIA(dataset_models.dataset.Dataset):
         assert previous >= 0, "previous should be a non-negative integer, it is currently " + previous
         assert previous < 5, "previous should not be a very large integer, it is currently " + previous
         if previous == 0:
-            data = feather.read_dataframe(directory + filename)
-            return data.values
+            data = feather.read_dataframe(directory + filename).values.reshape(1024,1024,8)
+            return data
         else:
             previous_filename = self._get_prior_x_filename(filename, previous)
-            data = feather.read_dataframe(directory + previous_filename)
-            return data.values
+            data = feather.read_dataframe(directory + previous_filename).values.reshape(1024,1024,8)
+            return data
           
     def _get_hand_tailored_side_channel_data(self, filename):
         """
@@ -488,11 +505,10 @@ class AIA(dataset_models.dataset.Dataset):
         if "hand_tailored" in self.side_channels:
             return np.array(self._get_hand_tailored_side_channel_data(filename))
 
-    def _get_x_data(self, filename, aia_image_count=2, training=None):
+    def _get_x_data(self, filename, training=None):
         """
         Get the list of data associated with the sample filename.
         @param filename {string} The name of the file which we are currently sampling.
-        @param aia_image_count {int} The total number of timestep images to be composited.
         @param current_data {list} The data that we will append to.
         @param training {bool} Indicates whether we are currently training or testing.
            This will determine where we look for x-files.
@@ -502,7 +518,7 @@ class AIA(dataset_models.dataset.Dataset):
             directory = self.training_directory
         else:
             directory = self.validation_directory
-        for index in range(0, aia_image_count):
+        for index in range(0, self.aia_image_count):
             current_data.append(self._get_aia_image(filename, directory, previous=index))
         if self.side_channels:
             data_x_side_channel_sample = self._get_side_channel_data(filename)
